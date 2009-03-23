@@ -51,6 +51,17 @@ class Path:
 			distance += self.points[i].distance_to(self.points[i+1])
 		return distance
 
+	def get_times(self, speed):
+		times = []
+		t = 0.0
+
+		times.append(t)
+		for i in range(len(self.points) - 1):
+			t += self.points[i].distance_to(self.points[i+1]) / speed
+			times.append(t)
+
+		return times
+
 	def __len__(self):
 		return len(self.points)
 
