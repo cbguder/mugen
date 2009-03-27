@@ -24,7 +24,15 @@ def main():
 	filename = sys.argv[1]
 
 	f = open(filename)
-	vehicles = generate(f)
+	vehicles, trim = generate(f)
+	f.close()
+
+	f = open(filename + '.gpi', 'w')
+	plot_vehicle_count(f, vehicles, trim)
+	f.close()
+
+	f = open(filename + '.tcl', 'w')
+	generate_ns2_scene(f, vehicles, trim)
 	f.close()
 
 def generate(f):
@@ -52,17 +60,9 @@ def generate(f):
 
 		t = arrival
 
-#	plot_vehicle_count(vehicles, trim)
-	generate_ns2_scene(vehicles, trim)
+	return vehicles, trim
 
-	return vehicles
-
-def generate_ns2_scene(vehicles, trim = 0.0):
-#	$node_(0) set X_ 726.589600
-#	$node_(0) set Y_ 732.986267
-#	$node_(0) set Z_ 0.000000
-#	$ns_ at 0.000000 "$node_(0) setdest 549.615173 549.615173 32.812519"
-
+def generate_ns2_scene(f, vehicles, trim = 0.0):
 	i = 0
 	for v in vehicles:
 		rel_times  = v['path'].get_times(v['speed'])
@@ -91,25 +91,25 @@ def generate_ns2_scene(vehicles, trim = 0.0):
 				sim_times[j] = 0.0
 
 		if sim_times[j] < SIMULATION_TIME:
-			print "$node_(%d) set X_ %f" % (i, initial.x)
-			print "$node_(%d) set Y_ %f" % (i, initial.y)
-			print "$node_(%d) set Z_ %f" % (i, 0)
+			f.write('$node_(%d) set X_ %f\n' % (i, initial.x))
+			f.write('$node_(%d) set Y_ %f\n' % (i, initial.y))
+			f.write('$node_(%d) set Z_ %f\n' % (i, 0))
 
-			print '$ns_ at %f "$beacon_(%d) PeriodicBroadcast ON"' % (sim_times[j], i)
+			f.write('$ns_ at %f "$beacon_(%d) PeriodicBroadcast ON"\n' % (sim_times[j], i))
 
 		while j < num_times - 1:
 			t = sim_times[j]
 
 			if t < SIMULATION_TIME:
 				p = v['path'][j+1]
-				print '$ns_ at %f "$node_(%d) setdest %f %f %f"' % (t, i, p.x, p.y, v['speed'])
+				f.write('$ns_ at %f "$node_(%d) setdest %f %f %f"\n' % (t, i, p.x, p.y, v['speed']))
 
 			j += 1
 
 		if sim_times[-1] < SIMULATION_TIME:
 			params = (sim_times[-1], i, i)
-			print '$ns_ at %f "$ns_ detach-agent $node_(%d) $agent_(%d)"'  % params
-			print '$ns_ at %f "$ns_ detach-agent $node_(%d) $beacon_(%d)"'  % params
+			f.write('$ns_ at %f "$ns_ detach-agent $node_(%d) $agent_(%d)"\n'  % params)
+			f.write('$ns_ at %f "$ns_ detach-agent $node_(%d) $beacon_(%d)"\n'  % params)
 
 		i += 1
 
@@ -122,7 +122,7 @@ def interpolate(a, b, ratio):
 
 	return Point(None, x, y)
 
-def plot_vehicle_count(vehicles, trim = 0.0):
+def plot_vehicle_count(f, vehicles, trim = 0.0):
 	v_count = {0.0: 0}
 
 	for v in vehicles:
@@ -131,16 +131,17 @@ def plot_vehicle_count(vehicles, trim = 0.0):
 		v_count[v['arrival'] + dt] = -1
 
 	times = sorted(v_count.keys())
-
 	real_count = 0
-	print "set style data lines"
-	print "set xrange[%f:%f]" % (trim, trim + SIMULATION_TIME)
-	print "set yrange[0:]"
-	print "plot '-' t 'Vehicles'"
-	print "0.0 0"
+
+	f.write("set style data lines\n")
+	f.write("set xrange[%f:%f]\n" % (trim, trim + SIMULATION_TIME))
+	f.write("set yrange[0:]\n")
+	f.write("plot '-' t 'Vehicles'\n")
+	f.write("0.0 0\n")
+
 	for t in times:
 		real_count += v_count[t]
-		print "%f %d" % (t, real_count)
+		f.write("%f %d\n" % (t, real_count))
 
 def find_all_paths(points, roads):
 	paths  = []
