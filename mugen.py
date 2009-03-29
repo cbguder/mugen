@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+VERSION = 0.2
+
 SIMULATION_TIME = 60.0
 
 # Average vehicle speed in m/s
@@ -31,6 +33,8 @@ def main():
 
 	with open(filename + '.tcl', 'w') as f:
 		generate_ns2_scene(f, vehicles)
+
+	display_stats(vehicles)
 
 def generate(f):
 	points, roads = parse(f)
@@ -160,6 +164,15 @@ def plot_vehicle_count(f, vehicles):
 		f.write("%f %d\n" % (t, real_count))
 
 def generate_ns2_scene(f, vehicles):
+	f.write('#\n')
+	f.write('# Generated using MUGEN %.1f\n' % VERSION)
+	f.write('#\n')
+	for line in get_stats(vehicles):
+		f.write('# ')
+		f.write(line)
+		f.write('\n')
+	f.write('#\n')
+
 	for i, v in enumerate(vehicles):
 		f.write('$node_(%d) set X_ %f\n' % (i, v['path'][0].x))
 		f.write('$node_(%d) set Y_ %f\n' % (i, v['path'][0].y))
@@ -175,6 +188,25 @@ def generate_ns2_scene(f, vehicles):
 			params = (v['times'][-1], i, i)
 			f.write('$ns_ at %f "$ns_ detach-agent $node_(%d) $agent_(%d)"\n'  % params)
 			f.write('$ns_ at %f "$ns_ detach-agent $node_(%d) $beacon_(%d)"\n'  % params)
+
+def display_stats(vehicles):
+	for line in get_stats(vehicles):
+		print line
+
+def get_stats(vehicles):
+	stats = []
+	stats.append("Simulation Time: %.2fs" % SIMULATION_TIME)
+	stats.append("")
+	stats.append("Mean Speed:      %.2f m/s" % SPEED_MEAN)
+	stats.append("Speed Std. Dev.:  %.2f m/s" % SPEED_STDEV)
+	stats.append("")
+	stats.append("Vehicle Density: %d veh/h" % VEHICLE_DENSITY)
+	stats.append("")
+	stats.append("Mean Inter-Arrival Time:      %.2fs" % ARRIVAL_MEAN)
+	stats.append("Inter-Arrival Time Std. Dev.: %.2fs" % ARRIVAL_STDEV)
+	stats.append("")
+	stats.append("Number of Vehicles: %d" % len(vehicles))
+	return stats
 
 if __name__ == '__main__':
 	main()
