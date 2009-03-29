@@ -29,8 +29,8 @@ class Point:
 
 class Road:
 	def __init__(self, a, b):
-			self.start = a
-			self.end   = b
+		self.start = a
+		self.end   = b
 
 	def length(self):
 		return self.start.distance_to(self.end)
