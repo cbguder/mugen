@@ -37,7 +37,7 @@ def main():
 	display_stats(vehicles)
 
 def generate(f):
-	points, roads = parse(f)
+	points, roads, regions = parse(f)
 
 	paths    = find_all_paths(points, roads)
 	trim     = calculate_trim(paths)

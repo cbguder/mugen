@@ -3,20 +3,32 @@ from models import Point, Road
 
 def parse(f):
 	points = {}
-	roads  = []
+	roads = []
+	regions = []
 
-	point_pattern = re.compile("(\w+)\s+(\d*\.?\d+)\s+(\d*\.?\d+)")
-	road_pattern  = re.compile("(\w+)\s+->\s+(\w+)")
+	point_pattern = re.compile("(\w+)\s+(\d*\.?\d+)\s+(\d*\.?\d+)$")
+	road_pattern = re.compile("(\w+)\s+->\s+(\w+)$")
+	region_pattern = re.compile("R\s+(\d*\.?\d+)\s+(\d*\.?\d+)\s+(\d*\.?\d+)\s+(\d*\.?\d+)$")
 
 	for line in f:
-		m = point_pattern.match(line)
-		if m:
-			p = Point(m.group(1), float(m.group(2)), float(m.group(3)))
-			points[m.group(1)] = p
-		else:
-			m = road_pattern.match(line)
+		line = line.strip()
+		if line != '':
+			m = point_pattern.match(line)
 			if m:
-				r = Road(points[m.group(1)], points[m.group(2)])
-				roads.append(r)
+				p = Point(m.group(1), float(m.group(2)), float(m.group(3)))
+				points[m.group(1)] = p
+			else:
+				m = road_pattern.match(line)
+				if m:
+					r = Road(points[m.group(1)], points[m.group(2)])
+					roads.append(r)
+				else:
+					m = region_pattern.match(line)
+					if m:
+						r = {'x': float(m.group(1)),
+							 'y': float(m.group(2)),
+							 'width': float(m.group(3)),
+							 'height': float(m.group(4))}
+						regions.append(r)
 
-	return points.values(), roads
+	return points.values(), roads, regions
