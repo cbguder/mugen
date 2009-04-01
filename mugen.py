@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-VERSION = 0.2
+VERSION = 0.3
 
 SIMULATION_TIME = 60.0
 
@@ -40,11 +40,14 @@ def main():
 def generate(f):
 	points, roads, regions = parse(f)
 
-	paths    = find_all_paths(points, roads)
-	trim     = calculate_trim(paths)
+	paths = find_all_paths(points, roads)
+	trim = calculate_trim(paths)
 	vehicles = generate_movement(paths, SIMULATION_TIME + trim)
+	trimmed = trim_vehicles(vehicles, trim)
 
-	return trim_vehicles(vehicles, trim)
+	add_collisions(trimmed, regions)
+
+	return trimmed
 
 def find_all_paths(points, roads):
 	paths  = []
@@ -134,6 +137,12 @@ def trim_vehicles(vehicles, trim):
 
 	return trimmed
 
+def add_collisions(vehicles, regions):
+	for v in vehicles:
+		collisions = v['path'].get_collisions(regions, v['speed'])
+		collisions = [t + v['arrival'] for t in collisions]
+		v['collisions'] = [t for t in collisions if t < SIMULATION_TIME]
+
 def plot_vehicle_count(f, vehicles):
 	v_count = {}
 
@@ -176,6 +185,9 @@ def generate_ns2_scene(f, vehicles):
 		for j, t in enumerate(v['times'][:-1]):
 			p = v['path'][j+1]
 			f.write('$ns_ at %f "$node_(%d) setdest %f %f %f"\n' % (t, i, p.x, p.y, v['speed']))
+
+		for t in v['collisions']:
+			f.write('$ns_ at %f "$agent_(%d) send"\n' % (t, i))
 
 		if v['times'][-1] < SIMULATION_TIME:
 			params = (v['times'][-1], i, i)

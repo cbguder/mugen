@@ -64,7 +64,7 @@ class Path:
 
 		return times
 
-	def get_critical_times(self, regions, speed):
+	def get_collisions(self, regions, speed):
 		times = []
 
 		for region in regions:
