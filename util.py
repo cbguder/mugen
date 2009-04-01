@@ -8,7 +8,7 @@ def interpolate(a, b, ratio):
 	return (x, y)
 
 # Cohen-Sutherland Algorithm
-def intersect(a, b, region):
+def intersect(road, region):
 	LEFT, RIGHT, BOTTOM, TOP = 1, 2, 4, 8
 
 	xmin = region['x']
@@ -31,8 +31,8 @@ def intersect(a, b, region):
 
 		return code
 
-	x0, y0 = a.x, a.y
-	x1, y1 = b.x, b.y
+	x0, y0 = road.start.x, road.start.y
+	x1, y1 = road.end.x, road.end.y
 
 	start_code = outcode(x0, y0)
 	end_code = outcode(x1, y1)
