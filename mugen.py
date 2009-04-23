@@ -139,9 +139,17 @@ def trim_vehicles(vehicles, trim):
 
 def add_collisions(vehicles, regions):
 	for v in vehicles:
+		v['collisions'] = []
 		collisions = v['path'].get_collisions(regions, v['speed'])
-		collisions = [t + v['arrival'] for t in collisions]
-		v['collisions'] = [t for t in collisions if t < SIMULATION_TIME]
+
+		for collision in collisions:
+			collision['time'] += v['arrival']
+			if collision['time'] < SIMULATION_TIME:
+				for event in collision['region']['events']:
+					if random.random() < event['probability']:
+						dispatch = {'time': collision['time'],
+						            'event': event['id']}
+						v['collisions'].append(dispatch)
 
 def plot_vehicle_count(f, vehicles):
 	v_count = {}
@@ -186,8 +194,8 @@ def generate_ns2_scene(f, vehicles):
 			p = v['path'][j+1]
 			f.write('$ns_ at %f "$node_(%d) setdest %f %f %f"\n' % (t, i, p.x, p.y, v['speed']))
 
-		for t in v['collisions']:
-			f.write('$ns_ at %f "$agent_(%d) send"\n' % (t, i))
+		for collision in v['collisions']:
+			f.write('$ns_ at %f "$agent_(%d) send %d"\n' % (collision['time'], i, collision['event']))
 
 		if v['times'][-1] < SIMULATION_TIME:
 			params = (v['times'][-1], i, i)

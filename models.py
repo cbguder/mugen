@@ -65,7 +65,7 @@ class Path:
 		return times
 
 	def get_collisions(self, regions, speed):
-		times = []
+		collisions = []
 
 		for region in regions:
 			for i, road in enumerate(self.roads):
@@ -73,10 +73,11 @@ class Path:
 				if intersection != None:
 					time = sum([road.length() for road in self.roads[:i]]) / speed
 					time += road.start.distance_to(Point(None, intersection[0], intersection[1])) / speed
-					times.append(time)
+					collision = {'time': time, 'region': region}
+					collisions.append(collision)
 					break
 
-		return times
+		return collisions
 
 	def __len__(self):
 		return len(self.points)
