@@ -167,7 +167,10 @@ def plot_vehicle_count(f, vehicles):
 	f.write("set style data lines\n")
 	f.write("set xrange[0:%f]\n" % SIMULATION_TIME)
 	f.write("set yrange[0:]\n")
-	f.write("plot '-' t 'Vehicles'\n")
+	f.write("set xlabel 'time (s)'\n")
+	f.write("set ylabel 'Vehicles'\n")
+	f.write("set nokey\n")
+	f.write("plot '-'\n")
 
 	for t in times:
 		real_count += v_count[t]
