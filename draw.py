@@ -7,7 +7,7 @@ import PSDraw
 from parser import parse
 from util import intersect
 
-REGION_EXTEND = 100
+REGION_EXTEND = 500
 RANGE = 500
 
 def main():
