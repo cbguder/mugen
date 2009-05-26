@@ -2,50 +2,68 @@
 
 VERSION = 0.3
 
-SIMULATION_TIME = 60.0
-
-# Average vehicle speed in m/s
-SPEED_MEAN  = 30.0
-SPEED_STDEV = 4.0
-
-# Vehicle density in vehicles/hour
-VEHICLE_DENSITY = 2600.0
-ARRIVAL_MEAN    = 3600.0 / VEHICLE_DENSITY
-ARRIVAL_STDEV   = 0.8
-
 import sys
 import random
+import os.path
+
+from optparse import OptionParser
+
 from parser import parse
 from models import Point, Path
 from util import *
 
 def main():
-	if len(sys.argv) < 2:
-		print "Usage: mugen.py FILE"
-		sys.exit()
+	parser = OptionParser(usage='Usage: %prog [OPTION] FILE',
+	                      version='%prog ' + '%.1f' % VERSION)
 
-	filename = sys.argv[1]
+	parser.add_option('-t', '--time', type='float', help='simulation time (default: 60 seconds)')
+	parser.add_option('-s', '--speed', type='float', help='mean vehicle speed (default: 30 m/s)')
+	parser.add_option('-d', '--density', type='float', help='vehicle density (default: 2600 vehicles/hour)')
+	parser.add_option('--speed-stdev', type='float', help='standard deviation of vehicle speed (default: 4 m/s)')
+	parser.add_option('--arrival-stdev', type='float', help='standard deviation of intra-arrival time (default: 0.8s)')
 
-	with open(filename) as f:
-		vehicles = generate(f)
+	parser.set_defaults(time=60.0,
+	                    speed=30.0,
+	                    speed_stdev=4.0,
+	                    density=2600.0,
+	                    arrival_stdev=0.8)
 
-	with open(filename + '.gpi', 'w') as f:
-		plot_vehicle_count(f, vehicles)
+	options, args = parser.parse_args()
 
-	with open(filename + '.tcl', 'w') as f:
-		generate_ns2_scene(f, vehicles)
+	if len(args) < 1:
+		parser.print_help()
+		sys.exit(2)
 
-	display_stats(vehicles)
+	setattr(parser.values, 'arrival', 3600.0 / options.density)
 
-def generate(f):
+	if os.path.exists(args[0]):
+		mugen(args[0], options)
+	else:
+		print 'mugen: error: no such file: %s' % args[0]
+
+def mugen(file, options):
+	with open(file) as f:
+		vehicles = generate(f, options)
+
+	with open(file + '.gpi', 'w') as f:
+		plot_vehicle_count(f, vehicles, options.time)
+
+	with open(file + '.tcl', 'w') as f:
+		generate_ns2_scene(f, vehicles, options)
+
+	display_stats(vehicles, options)
+
+def generate(f, options):
 	points, roads, regions = parse(f)
 
 	paths = find_all_paths(points, roads)
-	trim = calculate_trim(paths)
-	vehicles = generate_movement(paths, SIMULATION_TIME + trim)
-	trimmed = trim_vehicles(vehicles, trim)
+	trim = calculate_trim(paths, options.speed)
+	vehicles = generate_movement(paths, options.time + trim,
+	                             options.speed, options.speed_stdev,
+	                             options.arrival, options.arrival_stdev)
+	trimmed = trim_vehicles(vehicles, options.time, trim)
 
-	add_collisions(trimmed, regions)
+	add_collisions(trimmed, regions, options.time)
 
 	return trimmed
 
@@ -79,23 +97,22 @@ def find_all_paths(points, roads):
 
 	return paths
 
-def calculate_trim(paths):
+def calculate_trim(paths, mean_speed):
 	longest_dist = 0.0
 	for path in paths:
 		dist = path.total_distance()
 		if dist > longest_dist:
 			longest_dist = dist
 
-	return longest_dist / SPEED_MEAN
+	return longest_dist / mean_speed
 
-def generate_movement(paths, duration):
+def generate_movement(paths, duration, speed_mean, speed_stdev, arrival_mean, arrival_stdev):
+	vehicles = []
 	t = 0.0
 
-	vehicles = []
-
 	while t < duration:
-		speed   = random.gauss(SPEED_MEAN, SPEED_STDEV)
-		arrival = t + random.gauss(ARRIVAL_MEAN, ARRIVAL_STDEV)
+		speed   = random.gauss(speed_mean, speed_stdev)
+		arrival = t + random.gauss(arrival_mean, arrival_stdev)
 		path    = random.choice(paths)
 
 		vehicles.append({'speed'  : speed,
@@ -106,7 +123,7 @@ def generate_movement(paths, duration):
 
 	return vehicles
 
-def trim_vehicles(vehicles, trim):
+def trim_vehicles(vehicles, time, trim):
 	trimmed = []
 
 	for v in vehicles:
@@ -114,7 +131,7 @@ def trim_vehicles(vehicles, trim):
 		arrival = v['arrival'] - trim
 		times   = [t + arrival for t in path.get_times(v['speed'])]
 
-		if times[0] < SIMULATION_TIME and times[-1] >= 0:
+		if times[0] < time and times[-1] >= 0:
 			if times[0] < 0:
 				# Interpolate position at t = 0
 				i = 0
@@ -137,21 +154,21 @@ def trim_vehicles(vehicles, trim):
 
 	return trimmed
 
-def add_collisions(vehicles, regions):
+def add_collisions(vehicles, regions, time):
 	for v in vehicles:
 		v['collisions'] = []
 		collisions = v['path'].get_collisions(regions, v['speed'])
 
 		for collision in collisions:
 			collision['time'] += v['arrival']
-			if collision['time'] < SIMULATION_TIME:
+			if collision['time'] < time:
 				for event in collision['region']['events']:
 					if random.random() < event['probability']:
 						dispatch = {'time': collision['time'],
 						            'event': event['id']}
 						v['collisions'].append(dispatch)
 
-def plot_vehicle_count(f, vehicles):
+def plot_vehicle_count(f, vehicles, time):
 	v_count = {}
 
 	for v in vehicles:
@@ -165,7 +182,7 @@ def plot_vehicle_count(f, vehicles):
 	real_count = 0
 
 	f.write("set style data lines\n")
-	f.write("set xrange[0:%f]\n" % SIMULATION_TIME)
+	f.write("set xrange[0:%f]\n" % time)
 	f.write("set yrange[0:]\n")
 	f.write("set xlabel 'time (s)'\n")
 	f.write("set ylabel 'Vehicles'\n")
@@ -176,11 +193,12 @@ def plot_vehicle_count(f, vehicles):
 		real_count += v_count[t]
 		f.write("%f %d\n" % (t, real_count))
 
-def generate_ns2_scene(f, vehicles):
+def generate_ns2_scene(f, vehicles, options):
 	f.write('#\n')
 	f.write('# Generated using MUGEN %.1f\n' % VERSION)
 	f.write('#\n')
-	for line in get_stats(vehicles):
+
+	for line in get_stats(vehicles, options):
 		f.write('# ')
 		f.write(line)
 		f.write('\n')
@@ -200,26 +218,26 @@ def generate_ns2_scene(f, vehicles):
 		for collision in v['collisions']:
 			f.write('$ns_ at %f "$agent_(%d) send %d"\n' % (collision['time'], i, collision['event']))
 
-		if v['times'][-1] < SIMULATION_TIME:
+		if v['times'][-1] < options.time:
 			params = (v['times'][-1], i, i)
 			f.write('$ns_ at %f "$ns_ detach-agent $node_(%d) $agent_(%d)"\n'  % params)
 			f.write('$ns_ at %f "$ns_ detach-agent $node_(%d) $beacon_(%d)"\n'  % params)
 
-def display_stats(vehicles):
-	for line in get_stats(vehicles):
+def display_stats(vehicles, options):
+	for line in get_stats(vehicles, options):
 		print line
 
-def get_stats(vehicles):
+def get_stats(vehicles, options):
 	stats = []
-	stats.append("Simulation Time: %.2fs" % SIMULATION_TIME)
+	stats.append("Simulation Time: %.2fs" % options.time)
 	stats.append("")
-	stats.append("Mean Speed:      %.2f m/s" % SPEED_MEAN)
-	stats.append("Speed Std. Dev.:  %.2f m/s" % SPEED_STDEV)
+	stats.append("Mean Speed:      %.2f m/s" % options.speed)
+	stats.append("Speed Std. Dev.:  %.2f m/s" % options.speed_stdev)
 	stats.append("")
-	stats.append("Vehicle Density: %d veh/h" % VEHICLE_DENSITY)
+	stats.append("Vehicle Density: %d veh/h" % options.density)
 	stats.append("")
-	stats.append("Mean Inter-Arrival Time:      %.2fs" % ARRIVAL_MEAN)
-	stats.append("Inter-Arrival Time Std. Dev.: %.2fs" % ARRIVAL_STDEV)
+	stats.append("Mean Inter-Arrival Time:      %.2fs" % options.arrival)
+	stats.append("Inter-Arrival Time Std. Dev.: %.2fs" % options.arrival_stdev)
 	stats.append("")
 	stats.append("Number of Vehicles: %d" % len(vehicles))
 	return stats
