@@ -1,0 +1,62 @@
+#!/usr/bin/env python
+
+import re
+import sys
+import random
+import os.path
+from optparse import OptionParser
+
+VERSION = 0.2
+
+def main():
+	parser = OptionParser(usage='Usage: %prog [OPTION] FILE',
+	                      version='%prog ' + '%.1f' % VERSION)
+
+	parser.add_option('-e', '--events', type='int', help='number of events')
+	parser.add_option('-p', '--probability', type='float', help='probability')
+
+	parser.set_defaults(events=None,
+	                    probability=None)
+
+	options, args = parser.parse_args()
+
+	if len(args) < 1:
+		parser.print_help()
+		sys.exit(2)
+
+	if os.path.exists(args[0]):
+		reduce(args[0], options.events, options.probability)
+
+def reduce(file, events, probability):
+	with open(file) as f:
+		for line in f:
+			if passes(line, events, probability):
+				print line,
+
+def passes(line, events, probability):
+	m = re.search(' send( [0-9]+)?"', line)
+	if m == None:
+		return True
+
+	if events == None:
+		if probability == None:
+			return True
+		else:
+			return random.random() < probability
+	else:
+		event = 0
+		try:
+			event = int(m.group(1).strip())
+		except:
+			pass
+
+		if event <= events:
+			if probability == None:
+				return True
+			else:
+				return random.random() < probability
+		else:
+			return False
+
+if __name__ == '__main__':
+	main()
