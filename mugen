@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-VERSION = 0.3
+VERSION = 0.4
 
 import sys
 import random
@@ -182,14 +182,14 @@ def plot_vehicle_count(f, vehicles, time):
 	real_count = 0
 
 	f.write("set style data lines\n")
-	f.write("set xrange[0:%f]\n" % time)
-	f.write("set yrange[0:]\n")
-	f.write("set xlabel 'time (s)'\n")
+	f.write("set xlabel 'Time (s)'\n")
 	f.write("set ylabel 'Vehicles'\n")
 	f.write("set nokey\n")
 	f.write("plot '-'\n")
 
 	for t in times:
+		if t > time:
+			break
 		real_count += v_count[t]
 		f.write("%f %d\n" % (t, real_count))
 
