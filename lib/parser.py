@@ -1,5 +1,6 @@
 import re
-from models import Point, Road
+from point import Point
+from road import Road
 
 def parse(f):
 	points = {}

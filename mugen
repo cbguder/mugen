@@ -5,12 +5,8 @@ VERSION = 0.4
 import sys
 import random
 import os.path
-
 from optparse import OptionParser
-
-from parser import parse
-from models import Point, Path
-from util import *
+from lib import *
 
 def main():
 	parser = OptionParser(usage='Usage: %prog [OPTION] FILE',
