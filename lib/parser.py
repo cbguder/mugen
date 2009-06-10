@@ -1,5 +1,4 @@
 import re
-from point import Point
 
 def parse(f):
 	points = {}
@@ -16,8 +15,7 @@ def parse(f):
 		if line != '':
 			m = point_pattern.match(line)
 			if m:
-				p = Point(m.group(1), float(m.group(2)), float(m.group(3)))
-				points[m.group(1)] = p
+				points[m.group(1)] = (float(m.group(2)), float(m.group(3)))
 			else:
 				m = road_pattern.match(line)
 				if m:

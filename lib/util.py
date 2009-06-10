@@ -1,20 +1,23 @@
+from math import sqrt
+
 def is_cyclic(path):
 	return len(set(path)) != len(path)
 
+def distance(a, b):
+	dx = a[0] - b[0]
+	dy = a[1] - b[1]
+
+	return sqrt(dx**2 + dy**2)
+
 def total_distance(path):
-	d = 0.0
-
-	for i in range(len(path) - 1):
-		d += path[i].distance_to(path[i+1])
-
-	return d
+	return sum([distance(path[i], path[i+1]) for i in range(len(path) - 1)])
 
 def interpolate(a, b, ratio):
-	dx = b.x - a.x
-	dy = b.y - a.y
+	dx = b[0] - a[0]
+	dy = b[1] - a[1]
 
-	x = a.x + ratio * dx
-	y = a.y + ratio * dy
+	x = a[0] + ratio * dx
+	y = a[1] + ratio * dy
 
 	return (x, y)
 
@@ -42,8 +45,8 @@ def intersect(road, region):
 
 		return code
 
-	x0, y0 = road[0].x, road[0].y
-	x1, y1 = road[1].x, road[1].y
+	x0, y0 = road[0][0], road[0][1]
+	x1, y1 = road[1][0], road[1][1]
 
 	start_code = outcode(x0, y0)
 	end_code = outcode(x1, y1)

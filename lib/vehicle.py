@@ -1,6 +1,5 @@
 from movement import Movement
-from point import Point
-from util import intersect, interpolate
+from util import distance, intersect, interpolate
 
 class Vehicle:
 	def __init__(self):
@@ -24,17 +23,15 @@ class Vehicle:
 			m.end = self.path[i+1]
 			m.speed = self.speed
 
-			duration = m.start.distance_to(m.end) / m.speed
+			duration = distance(m.start, m.end) / m.speed
 			t += duration
 
 			if t > 0:
 				if m.time < 0:
 					# Interpolate position at t = 0
+					ratio   = -m.time / duration
+					m.start = interpolate(m.end, m.start, ratio)
 					self.arrival = m.time = 0.0
-
-					ratio   = duration / t
-					initial = interpolate(m.end, m.start, ratio)
-					m.start = Point('S', *initial)
 
 				self.movements.append(m)
 
@@ -47,7 +44,7 @@ class Vehicle:
 			for m in self.movements:
 				intersection = intersect((m.start, m.end), region)
 				if intersection != None:
-					time = m.time + m.start.distance_to(Point(None, intersection[0], intersection[1])) / m.speed
+					time = m.time + distance(m.start, intersection) / m.speed
 					collision = {'time': time, 'region': region}
 					self.collisions.append(collision)
 					break

@@ -178,14 +178,14 @@ def generate_ns2_scene(f, vehicles, options):
 	f.write('#\n')
 
 	for i, v in enumerate(vehicles):
-		f.write('$node_(%d) set X_ %f\n' % (i, v.movements[0].start.x))
-		f.write('$node_(%d) set Y_ %f\n' % (i, v.movements[0].start.y))
+		f.write('$node_(%d) set X_ %f\n' % (i, v.movements[0].start[0]))
+		f.write('$node_(%d) set Y_ %f\n' % (i, v.movements[0].start[1]))
 		f.write('$node_(%d) set Z_ %f\n' % (i, 0))
 
 		f.write('$ns_ at %f "$beacon_(%d) PeriodicBroadcast ON"\n' % (v.arrival, i))
 
 		for m in v.movements:
-			f.write('$ns_ at %f "$node_(%d) setdest %f %f %f"\n' % (m.time, i, m.end.x, m.end.y, m.speed))
+			f.write('$ns_ at %f "$node_(%d) setdest %f %f %f"\n' % (m.time, i, m.end[0], m.end[1], m.speed))
 
 		for m in v.messages:
 			f.write('$ns_ at %f "$agent_(%d) send %d"\n' % (m['time'], i, m['event']))
