@@ -9,7 +9,6 @@ class Vehicle:
 		self.collisions = []
 		self.movements = []
 		self.path = []
-		self.messages = []
 		self.speed = 0.0
 
 	def calculate_movements(self):

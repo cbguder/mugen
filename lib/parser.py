@@ -8,7 +8,6 @@ def parse(f):
 	point_pattern = re.compile("(\w+)\s+(\d*\.?\d+)\s+(\d*\.?\d+)$")
 	road_pattern = re.compile("(\w+)\s+->\s+(\w+)$")
 	region_pattern = re.compile("R\s+(\d*\.?\d+)\s+(\d*\.?\d+)\s+(\d*\.?\d+)\s+(\d*\.?\d+)$")
-	event_pattern = re.compile("E\s*(\d+)\s+(\d*\.?\d+)$")
 
 	for line in f:
 		line = line.strip()
@@ -26,14 +25,7 @@ def parse(f):
 						r = {'x': float(m.group(1)),
 							 'y': float(m.group(2)),
 							 'width': float(m.group(3)),
-							 'height': float(m.group(4)),
-							 'events': []}
+							 'height': float(m.group(4))}
 						regions.append(r)
-					else:
-						m = event_pattern.match(line)
-						if m:
-							e = {'id': int(m.group(1)),
-							     'probability': float(m.group(2))}
-							regions[-1]['events'].append(e)
 
 	return points.values(), roads, regions
