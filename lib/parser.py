@@ -1,6 +1,5 @@
 import re
 from point import Point
-from road import Road
 
 def parse(f):
 	points = {}
@@ -22,8 +21,7 @@ def parse(f):
 			else:
 				m = road_pattern.match(line)
 				if m:
-					r = Road(points[m.group(1)], points[m.group(2)])
-					roads.append(r)
+					roads.append((points[m.group(1)], points[m.group(2)]))
 				else:
 					m = region_pattern.match(line)
 					if m:

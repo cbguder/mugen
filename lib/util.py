@@ -1,3 +1,14 @@
+def is_cyclic(path):
+	return len(set(path)) != len(path)
+
+def total_distance(path):
+	d = 0.0
+
+	for i in range(len(path) - 1):
+		d += path[i].distance_to(path[i+1])
+
+	return d
+
 def interpolate(a, b, ratio):
 	dx = b.x - a.x
 	dy = b.y - a.y
@@ -31,8 +42,8 @@ def intersect(road, region):
 
 		return code
 
-	x0, y0 = road.start.x, road.start.y
-	x1, y1 = road.end.x, road.end.y
+	x0, y0 = road[0].x, road[0].y
+	x1, y1 = road[1].x, road[1].y
 
 	start_code = outcode(x0, y0)
 	end_code = outcode(x1, y1)

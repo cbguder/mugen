@@ -71,24 +71,24 @@ def find_all_paths(points, roads):
 	exits     = points[:]
 
 	for road in roads:
-		if road.end in entrances:
-			entrances.remove(road.end)
-		if road.start in exits:
-			exits.remove(road.start)
+		if road[1] in entrances:
+			entrances.remove(road[1])
+		if road[0] in exits:
+			exits.remove(road[0])
 
 	for road in roads:
-		if road.start in entrances:
-			tpaths.append(Path([road.start, road.end]))
+		if road[0] in entrances:
+			tpaths.append(list(road))
 
 	while len(tpaths):
 		t2paths = []
 		for path in tpaths:
 			if len(path) > 1 and path[0] in entrances and path[-1] in exits:
 				paths.append(path)
-			elif not path.is_cyclic():
+			elif not is_cyclic(path):
 				for road in roads:
-					if road.start == path[-1]:
-						t2paths.append(Path(path.points + [road.end]))
+					if road[0] == path[-1]:
+						t2paths.append(path + [road[1]])
 		tpaths = t2paths
 
 	return paths
@@ -96,7 +96,7 @@ def find_all_paths(points, roads):
 def calculate_trim(paths, mean_speed):
 	longest_dist = 0.0
 	for path in paths:
-		dist = path.total_distance()
+		dist = total_distance(path)
 		if dist > longest_dist:
 			longest_dist = dist
 
@@ -107,15 +107,13 @@ def generate_movement(paths, duration, speed_mean, speed_stdev, arrival_mean, ar
 	t = 0.0
 
 	while t < duration:
-		speed   = random.gauss(speed_mean, speed_stdev)
-		arrival = t + random.gauss(arrival_mean, arrival_stdev)
-		path    = random.choice(paths)
+		v = Vehicle()
+		v.speed   = random.gauss(speed_mean, speed_stdev)
+		v.arrival = t + random.gauss(arrival_mean, arrival_stdev)
+		v.path    = random.choice(paths)
 
-		vehicles.append({'speed'  : speed,
-		                 'arrival': arrival,
-		                 'path'   : path})
-
-		t = arrival
+		vehicles.append(v)
+		t = v.arrival
 
 	return vehicles
 
@@ -123,56 +121,33 @@ def trim_vehicles(vehicles, time, trim):
 	trimmed = []
 
 	for v in vehicles:
-		path    = v['path']
-		arrival = v['arrival'] - trim
-		times   = [t + arrival for t in path.get_times(v['speed'])]
+		v.arrival -= trim
+		v.calculate_movements()
 
-		if times[0] < time and times[-1] >= 0:
-			if times[0] < 0:
-				# Interpolate position at t = 0
-				i = 0
-				while times[i] < 0:
-					i += 1
-
-				ratio   = times[i] / (times[i] - times[i-1])
-				initial = interpolate(path[i], path[i-1], ratio)
-				initial = Point('S', initial[0], initial[1])
-
-				arrival = 0.0
-				times = [0.0] + times[i:]
-				path = Path([initial] + path[i:])
-
-			v['arrival'] = arrival
-			v['times']   = times
-			v['path']    = path
-
+		if v.arrival < time and v.leave >= 0:
+			v.movements = [m for m in v.movements if m.time < time]
 			trimmed.append(v)
 
 	return trimmed
 
 def add_collisions(vehicles, regions, time):
 	for v in vehicles:
-		v['collisions'] = []
-		collisions = v['path'].get_collisions(regions, v['speed'])
+		v.calculate_collisions(regions)
 
-		for collision in collisions:
-			collision['time'] += v['arrival']
+		for collision in v.collisions:
 			if collision['time'] < time:
 				for event in collision['region']['events']:
 					if random.random() < event['probability']:
 						dispatch = {'time': collision['time'],
 						            'event': event['id']}
-						v['collisions'].append(dispatch)
+						v.messages.append(dispatch)
 
 def plot_vehicle_count(f, vehicles, time):
 	v_count = {}
 
 	for v in vehicles:
-		dt = v['path'].total_distance() / v['speed']
-		v['leave'] = v['arrival'] + dt
-
-		v_count[v['arrival']] = v_count.get(v['arrival'], 0) + 1
-		v_count[v['leave']] = v_count.get(v['leave'], 0) - 1
+		v_count[v.arrival] = v_count.get(v.arrival, 0) + 1
+		v_count[v.leave] = v_count.get(v.leave, 0) - 1
 
 	times = sorted(v_count.keys())
 	real_count = 0
@@ -203,21 +178,20 @@ def generate_ns2_scene(f, vehicles, options):
 	f.write('#\n')
 
 	for i, v in enumerate(vehicles):
-		f.write('$node_(%d) set X_ %f\n' % (i, v['path'][0].x))
-		f.write('$node_(%d) set Y_ %f\n' % (i, v['path'][0].y))
+		f.write('$node_(%d) set X_ %f\n' % (i, v.movements[0].start.x))
+		f.write('$node_(%d) set Y_ %f\n' % (i, v.movements[0].start.y))
 		f.write('$node_(%d) set Z_ %f\n' % (i, 0))
 
-		f.write('$ns_ at %f "$beacon_(%d) PeriodicBroadcast ON"\n' % (v['times'][0], i))
+		f.write('$ns_ at %f "$beacon_(%d) PeriodicBroadcast ON"\n' % (v.arrival, i))
 
-		for j, t in enumerate(v['times'][:-1]):
-			p = v['path'][j+1]
-			f.write('$ns_ at %f "$node_(%d) setdest %f %f %f"\n' % (t, i, p.x, p.y, v['speed']))
+		for m in v.movements:
+			f.write('$ns_ at %f "$node_(%d) setdest %f %f %f"\n' % (m.time, i, m.end.x, m.end.y, m.speed))
 
-		for collision in v['collisions']:
-			f.write('$ns_ at %f "$agent_(%d) send %d"\n' % (collision['time'], i, collision['event']))
+		for m in v.messages:
+			f.write('$ns_ at %f "$agent_(%d) send %d"\n' % (m['time'], i, m['event']))
 
-		if v['times'][-1] < options.time:
-			params = (v['times'][-1], i, i)
+		if v.leave < options.time:
+			params = (v.leave, i, i)
 			f.write('$ns_ at %f "$ns_ detach-agent $node_(%d) $agent_(%d)"\n'  % params)
 			f.write('$ns_ at %f "$ns_ detach-agent $node_(%d) $beacon_(%d)"\n'  % params)
 

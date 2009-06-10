@@ -1,5 +1,5 @@
+from movement import Movement
 from parser import parse
-from path import Path
 from point import Point
-from road import Road
-from util import interpolate, intersect
+from util import *
+from vehicle import Vehicle
