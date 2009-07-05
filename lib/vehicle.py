@@ -29,7 +29,7 @@ class Vehicle:
 				if m.time < 0:
 					# Interpolate position at t = 0
 					ratio   = -m.time / duration
-					m.start = interpolate(m.end, m.start, ratio)
+					m.start = interpolate(m.start, m.end, ratio)
 					self.arrival = m.time = 0.0
 
 				self.movements.append(m)
