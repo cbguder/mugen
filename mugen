@@ -108,9 +108,19 @@ def generate_movement(paths, duration, speed_mean, speed_stdev, arrival_mean, ar
 
 	while t < duration:
 		v = Vehicle()
-		v.speed   = random.gauss(speed_mean, speed_stdev)
-		v.arrival = t + random.gauss(arrival_mean, arrival_stdev)
-		v.path    = random.choice(paths)
+
+		while True:
+			v.speed = random.gauss(speed_mean, speed_stdev)
+			if v.speed > 0:
+				break
+
+		while True:
+			q = random.gauss(arrival_mean, arrival_stdev)
+			if q > 0:
+				v.arrival = t + q
+				break
+
+		v.path = random.choice(paths)
 
 		vehicles.append(v)
 		t = v.arrival
@@ -187,6 +197,8 @@ def generate_ns2_scene(f, vehicles, options):
 			params = (v.leave, i, i)
 			f.write('$ns_ at %f "$ns_ detach-agent $node_(%d) $agent_(%d)"\n'  % params)
 			f.write('$ns_ at %f "$ns_ detach-agent $node_(%d) $beacon_(%d)"\n'  % params)
+
+		f.write('\n')
 
 def display_stats(vehicles, options):
 	for line in get_stats(vehicles, options):
